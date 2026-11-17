@@ -13,15 +13,19 @@ static const float TEMP_MAX_C = 85.0f;
 static const float TEMP_MIN_C = -40.0f;
 
 void SEN0343Component::setup() {
-  if (this->write(START_CMD, sizeof(START_CMD)) != i2c::ERROR_OK) {
-    ESP_LOGE(TAG, "Sensor did not respond at address 0x%02X", this->address_);
-    this->mark_failed();
+  // Do not mark the component failed here: on a remote/long-cable installation the sensor may not be
+  // powered or ready yet at boot, or the bus may glitch. update() keeps retrying instead.
+  auto err = this->write(START_CMD, sizeof(START_CMD));
+  if (err != i2c::ERROR_OK) {
+    ESP_LOGW(TAG, "Sensor did not respond at address 0x%02X during setup (error %d), will keep retrying",
+             this->address_, (int) err);
   }
 }
 
 void SEN0343Component::update() {
-  if (this->write(START_CMD, sizeof(START_CMD)) != i2c::ERROR_OK) {
-    ESP_LOGW(TAG, "Failed to start measurement");
+  auto err = this->write(START_CMD, sizeof(START_CMD));
+  if (err != i2c::ERROR_OK) {
+    ESP_LOGW(TAG, "Failed to start measurement (error %d)", (int) err);
     this->status_set_warning();
     return;
   }
